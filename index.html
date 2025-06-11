@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attention Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3498db;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-header {
+            background-color: var(--dark);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+            background-color: var(--dark);
+            color: white;
+        }
+        
+        .alert-panel {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-attentive { background-color: var(--success); }
+        .status-distracted { background-color: var(--danger); }
+        .status-absent { background-color: #95a5a6; }
+        
+        .student-card {
+            border-left: 4px solid;
+            margin-bottom: 10px;
+        }
+        
+        .student-card.attentive { border-color: var(--success); }
+        .student-card.distracted { border-color: var(--danger); }
+        .student-card.absent { border-color: #95a5a6; }
+        
+        .badge-attention { background-color: var(--success); }
+        .badge-distracted { background-color: var(--danger); }
+        .badge-absent { background-color: #95a5a6; }
+        
+        .last-updated {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .summary-card {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .summary-card i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+     
+        .table th, .table td {
+            vertical-align: middle;
+        }
+
+        .card-body table td {
+            font-weight: 500;
+        }
+
+        .card-body table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chalkboard-teacher me-2"></i> Student Attention Dashboard</h1>
+                    <p class="mb-0">Real-time monitoring of classroom engagement</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="last-updated">
+                        <i class="fas fa-sync-alt me-1"></i> 
+                        Last updated: <span id="last-updated">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card summary-card bg-white">
+                    <i class="fas fa-users text-primary"></i>
+                    <h3 id="total-students">0</h3>
+                    <p class="mb-0">Total Students</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-white">
+                    <i class="fas fa-user-check text-success"></i>
+                    <h3 id="present-count">0</h3>
+                    <p class="mb-0">Present</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-white">
+                    <i class="fas fa-brain text-info"></i>
+                    <h3 id="avg-attention">0%</h3>
+                    <p class="mb-0">Avg Attention</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-white">
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    <h3 id="distracted-count">0</h3>
+                    <p class="mb-0">Distracted</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i> Attention Distribution
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="attentionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-clock me-2"></i> Attention Trend
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <i class="fas fa-list me-2"></i> Student Details
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Status</th>
+                                        <th>Attention Time</th>
+                                        <th>Distraction Time</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-table">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+ 
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header bg-warning text-white">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Alerts
+                    </div>
+                    <div class="card-body alert-panel" id="alerts-panel">
+                        <div class="alert alert-info">
+                            Loading student data...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-trophy me-2"></i> Top Performers
+                    </div>
+                    <div class="card-body" id="top-performers">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header bg-danger text-white">
+                        <i class="fas fa-user-slash me-2"></i> Needs Attention
+                    </div>
+                    <div class="card-body" id="most-distracted">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+                <div class="card mt-4 animate__animated animate__fadeInUp">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-calendar-alt me-2"></i> Weekly Class Timetable
+                    </div>
+                    <div class="card-body table-responsive p-2">
+                        <table class="table table-bordered text-center table-striped mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Monday</th>
+                                    <th>Tuesday</th>
+                                    <th>Wednesday</th>
+                                    <th>Thursday</th>
+                                    <th>Friday</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>9:00 - 10:00</td>
+                                    <td>Math</td>
+                                    <td>Physics</td>
+                                    <td>Chemistry</td>
+                                    <td>Biology</td>
+                                    <td>Math</td>
+                                </tr>
+                                <tr>
+                                    <td>10:00 - 11:00</td>
+                                    <td>English</td>
+                                    <td>Chemistry</td>
+                                    <td>Physics</td>
+                                    <td>Math</td>
+                                    <td>English</td>
+                                </tr>
+                                <tr>
+                                    <td>11:00 - 12:00</td>
+                                    <td>Biology</td>
+                                    <td>English</td>
+                                    <td>Math</td>
+                                    <td>Computer</td>
+                                    <td>Physics</td>
+                                </tr>
+                                <tr>
+                                    <td>12:00 - 1:00</td>
+                                    <td colspan="5" class="bg-light text-muted">Lunch Break</td>
+                                </tr>
+                                <tr>
+                                    <td>1:00 - 2:00</td>
+                                    <td>Computer</td>
+                                    <td>Biology</td>
+                                    <td>English</td>
+                                    <td>Chemistry</td>
+                                    <td>Computer</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+            </div>
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-bell me-2"></i> Upcoming Events
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Apr 12:</strong> Science Project Submission</li>
+                        <li><strong>Apr 15:</strong> Parent-Teacher Meeting</li>
+                        <li><strong>Apr 18:</strong> Mid-Term Exams Start</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card mt-4">
+                <div class="card-header bg-dark text-white">
+                    <i class="fas fa-target me-2"></i> Weekly Goals
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        <li class="list-group-item"><input type="checkbox"> Complete Chapter 5 - Physics</li>
+                        <li class="list-group-item"><input type="checkbox"> Revise Math Formulas</li>
+                        <li class="list-group-item"><input type="checkbox"> Practice English Essay</li>
+                    </ul>
+                </div>
+            </div>
+            
+            
+           <!-- Timetable Section -->
+        </div>            
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
